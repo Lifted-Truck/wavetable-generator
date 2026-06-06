@@ -85,7 +85,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "build":
             result = foundry.build(only=args.only, progress=lambda m: print(m, file=sys.stderr))
         elif args.command == "catalog":
-            raise NotImplementedError("Run 1, milestone 6: catalog reconcile")
+            if args.reconcile:
+                result = foundry.reconcile(args.target)
+                if not result["ok"]:
+                    print(json.dumps(result, indent=2, default=str))
+                    print("wtfoundry: catalog does not reconcile with disk", file=sys.stderr)
+                    return 1
+            else:
+                result = foundry.coverage(scope=args.target)
         else:  # pragma: no cover - argparse enforces choices
             raise SystemExit(2)
     except NotImplementedError as exc:

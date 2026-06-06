@@ -18,8 +18,10 @@ from typing import Any
 
 import numpy as np
 
-from wtfoundry.core import config, export
+from wtfoundry.core import catalog as catalog_mod
+from wtfoundry.core import config, export, spectro
 from wtfoundry.core.build import Candidate, build_library, table_slug
+from wtfoundry.core.catalog import CatalogEntry
 from wtfoundry.core.features import features_dict, table_features
 from wtfoundry.core.validate import check_gates, diversity_report
 from wtfoundry.core.write import write_table
@@ -28,6 +30,33 @@ from wtfoundry.generators import registry
 
 def _out_dir() -> Path:
     return config._project_root() / "out"
+
+
+def _make_entry(
+    *,
+    generator: str,
+    params: dict[str, Any],
+    seed: int | None,
+    n_frames: int,
+    intended_max_harmonic: int,
+    frames: np.ndarray,
+    path: Path,
+    spectrogram: bool = True,
+) -> CatalogEntry:
+    """Build a catalog entry for a written table, rendering its spectrogram."""
+    png = spectro.render_spectrogram(path).name if spectrogram else None
+    return CatalogEntry(
+        file=path.name,
+        generator=generator,
+        params=params,
+        seed=seed,
+        n_frames=n_frames,
+        morph_dims=int(config.fmt()["morph_dims"]),
+        morph_resolution=[n_frames],
+        intended_max_harmonic=intended_max_harmonic,
+        features=features_dict(frames),
+        spectrogram=png,
+    )
 
 
 class Foundry:
@@ -70,10 +99,19 @@ class Foundry:
                 "intended_max_harmonic": gen.intended_max_harmonic(resolved),
             }
 
+        imh = gen.intended_max_harmonic(resolved)
         frames = gen.render_table(resolved, n_frames=n_frames, seed=seed)
-        result = write_table(
-            frames, path, intended_max_harmonic=gen.intended_max_harmonic(resolved)
+        result = write_table(frames, path, intended_max_harmonic=imh)
+        entry = _make_entry(
+            generator=generator,
+            params=resolved,
+            seed=seed,
+            n_frames=n_frames,
+            intended_max_harmonic=imh,
+            frames=frames,
+            path=result.path,
         )
+        catalog_mod.upsert_entry(entry, result.path.parent)
         return {
             "generator": generator,
             "params": resolved,
@@ -82,7 +120,8 @@ class Foundry:
             "path": str(result.path),
             "passed": result.gate.passed,
             "checks": result.gate.checks,
-            "features": features_dict(frames),
+            "features": entry.features,
+            "spectrogram": entry.spectrogram,
         }
 
     def build(
@@ -98,10 +137,22 @@ class Foundry:
         through the single validated write path. ``only`` restricts to one family
         for fast iteration. Returns what was written and the diversity report."""
         target_dir = Path(out_dir) if out_dir else _out_dir()
+        entries: list[CatalogEntry] = []
 
         def writer(cand: Candidate, path: Path) -> dict[str, Any]:
             result = write_table(
                 cand.frames, path, intended_max_harmonic=cand.intended_max_harmonic
+            )
+            entries.append(
+                _make_entry(
+                    generator=cand.generator,
+                    params=cand.params,
+                    seed=cand.seed,
+                    n_frames=cand.n_frames,
+                    intended_max_harmonic=cand.intended_max_harmonic,
+                    frames=cand.frames,
+                    path=result.path,
+                )
             )
             return {
                 "generator": cand.generator,
@@ -119,11 +170,13 @@ class Foundry:
             progress=progress,
             writer=writer,
         )
+        catalog_path = catalog_mod.write_catalog(entries, target_dir)
         return {
             "n_written": len(result.written),
             "pool_size": result.pool_size,
             "written": result.written,
             "diversity": result.diversity,
+            "catalog": str(catalog_path),
         }
 
     def validate(self, target: str) -> dict[str, Any]:
@@ -183,17 +236,38 @@ class Foundry:
         self,
         nearest_to: str | None = None,
         filters: dict[str, Any] | None = None,
+        *,
+        scope: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Find and compare existing tables — "like this but brighter"."""
-        raise NotImplementedError("Run 1, milestone 6: catalog query")
+        """Find and compare existing tables — "like this but brighter".
 
-    def coverage(self) -> dict[str, Any]:
+        ``filters`` may pin a ``generator`` or give ``{feature: [lo, hi]}``
+        ranges; ``nearest_to`` (a table filename) ranks survivors by perceptual
+        distance to that table. Reads the catalog in ``scope`` (default out/)."""
+        cat = catalog_mod.load_catalog(Path(scope) if scope else _out_dir())
+        return catalog_mod.query(cat, nearest_to=nearest_to, filters=filters)
+
+    def coverage(self, *, scope: str | None = None) -> dict[str, Any]:
         """Report where the library is dense versus sparse across timbre space."""
-        raise NotImplementedError("Run 1, milestone 6: coverage")
+        cat = catalog_mod.load_catalog(Path(scope) if scope else _out_dir())
+        return catalog_mod.coverage(cat)
 
     def render_spectrogram(self, path: str) -> str:
         """Produce (or return) a spectrogram for the table at ``path``."""
-        raise NotImplementedError("Run 1, milestone 6: spectrograms")
+        return str(spectro.render_spectrogram(path))
+
+    def reconcile(self, scope: str | None = None) -> dict[str, Any]:
+        """Assert the catalog in ``scope`` (default out/) matches the wavs on
+        disk 1:1. A stage of the verification command."""
+        result = catalog_mod.reconcile(Path(scope) if scope else _out_dir())
+        return {
+            "ok": result.ok,
+            "n_entries": result.n_entries,
+            "n_files": result.n_files,
+            "missing_files": result.missing_files,
+            "orphan_files": result.orphan_files,
+            "reasons": result.reasons,
+        }
 
 
 foundry = Foundry()
