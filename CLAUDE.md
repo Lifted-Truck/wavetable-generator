@@ -18,6 +18,11 @@ python verify.py
 Stages, in order, stop at first failure: `pytest -q` → `wtfoundry build` →
 `wtfoundry validate out --strict` → `wtfoundry catalog out --reconcile`.
 
+`verify.py` self-routes every stage through the project venv. For ad-hoc
+commands during iteration, use the venv interpreter explicitly
+(`.venv\Scripts\python.exe -m pytest ...`), not the system `python`, which
+lacks the dependencies.
+
 ## Confirmed values (kickoff)
 
 - **Serum 2 format target:** 2048 samples per frame, 32-bit float, mono, up to

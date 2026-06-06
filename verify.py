@@ -25,8 +25,29 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 
-PYTHON = sys.executable
+_HERE = Path(__file__).resolve().parent
+
+
+def _venv_python() -> str:
+    """Resolve the project's virtual-env interpreter.
+
+    The Stop hook is launched by the system `python` on PATH, which does NOT
+    have the dependencies; they live in `.venv`. Routing every stage through the
+    venv interpreter (rather than sys.executable) keeps verify correct no matter
+    which `python` invoked this script.
+    """
+    for candidate in (
+        _HERE / ".venv" / "Scripts" / "python.exe",  # Windows
+        _HERE / ".venv" / "bin" / "python",  # POSIX
+    ):
+        if candidate.exists():
+            return str(candidate)
+    return sys.executable
+
+
+PYTHON = _venv_python()
 
 STAGES: list[tuple[str, list[str]]] = [
     ("pytest", [PYTHON, "-m", "pytest", "-q"]),
