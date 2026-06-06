@@ -13,14 +13,28 @@ keeps `python verify.py` red until Run 1 fills them in.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from wtfoundry.core import export
-from wtfoundry.core.features import table_features
+from wtfoundry.core import config, export
+from wtfoundry.core.features import features_dict, table_features
 from wtfoundry.core.validate import check_gates, diversity_report
+from wtfoundry.core.write import write_table
+from wtfoundry.generators import registry
+
+
+def _out_dir() -> Path:
+    return config._project_root() / "out"
+
+
+def _slug(generator: str, params: dict[str, Any], seed: int | None, n_frames: int) -> str:
+    payload = json.dumps({"g": generator, "p": params, "s": seed, "n": n_frames}, sort_keys=True)
+    digest = hashlib.sha1(payload.encode()).hexdigest()[:10]
+    return f"{generator}__{digest}"
 
 
 class Foundry:
@@ -29,7 +43,7 @@ class Foundry:
     def list_generators(self) -> list[dict[str, Any]]:
         """Return the palette: every registered generator's name, a one-line
         timbral description, and its typed parameter schema."""
-        raise NotImplementedError("Run 1, milestone 4: generator registry")
+        return registry.schemas()
 
     def generate(
         self,
@@ -45,7 +59,38 @@ class Foundry:
         and record it in the catalog. Returns file paths, measured features, and
         pass/fail. With ``dry_run=True`` it plans only: intended actions and
         projected output, no write."""
-        raise NotImplementedError("Run 1, milestone 7: generate lever")
+        gen = registry.get(generator)
+        resolved = gen.resolve(params)
+        morph = morph or {}
+        n_frames = int(morph.get("n_frames", config.fmt()["frames_per_table"]))
+        slug = _slug(generator, resolved, seed, n_frames)
+        path = _out_dir() / f"{slug}.wav"
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "generator": generator,
+                "params": resolved,
+                "seed": seed,
+                "n_frames": n_frames,
+                "intended_path": str(path),
+                "intended_max_harmonic": gen.intended_max_harmonic(resolved),
+            }
+
+        frames = gen.render_table(resolved, n_frames=n_frames, seed=seed)
+        result = write_table(
+            frames, path, intended_max_harmonic=gen.intended_max_harmonic(resolved)
+        )
+        return {
+            "generator": generator,
+            "params": resolved,
+            "seed": seed,
+            "n_frames": n_frames,
+            "path": str(result.path),
+            "passed": result.gate.passed,
+            "checks": result.gate.checks,
+            "features": features_dict(frames),
+        }
 
     def validate(self, target: str) -> dict[str, Any]:
         """Run the oracle on an existing table path or scope and report results.

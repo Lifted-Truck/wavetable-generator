@@ -9,6 +9,10 @@ Each family registers under a name with a typed parameter schema and a short
 timbral description; the registry is what ``list_generators()`` exposes, so
 adding a family automatically extends both the CLI vocabulary and Claude's."""
 
-from wtfoundry.generators.base import Generator, registry
+from wtfoundry.generators.base import Generator, ParamSpec, register, registry
 
-__all__ = ["Generator", "registry"]
+# Importing each family module runs its @register decorator, populating the
+# registry that list_generators() reads. Add a family here to extend the tool.
+from wtfoundry.generators import additive, fm, wavefold  # noqa: E402,F401
+
+__all__ = ["Generator", "ParamSpec", "register", "registry"]

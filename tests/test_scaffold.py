@@ -29,8 +29,8 @@ def test_foundry_exposes_levers():
         assert callable(getattr(foundry, lever))
 
 
-def test_registry_present_but_empty():
-    # Run 1 milestone 4 registers the first families; for now it is empty.
+def test_registry_is_populated():
+    # Milestone 4+ registers the generator families.
     from wtfoundry.generators import registry
 
-    assert len(registry) == 0
+    assert len(registry) >= 3
