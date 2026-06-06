@@ -1,0 +1,76 @@
+# presets.yaml — generator families, sweep ranges, oracle tolerances, and
+# resource ceilings. This is the tuning surface the diversity loop iterates on;
+# code reads values from here rather than hard-coding them.
+#
+# SCAFFOLD STATE: structure and documented defaults are present. Sweep ranges
+# per family are filled in as each generator is implemented (Run 1, milestones
+# 4-5). Tolerances below are starting points to be calibrated against fixtures.
+
+# ---------------------------------------------------------------------------
+# Serum 2 format target (confirmed at kickoff; mirrored in CLAUDE.md).
+# ---------------------------------------------------------------------------
+format:
+  samples_per_frame: 2048      # single-cycle length
+  frames_per_table: 256        # morph resolution along the 1-D axis (max 256)
+  sample_format: float32       # 32-bit float
+  channels: 1                  # mono
+  morph_dims: 1                # N today; generators stay dimension-agnostic
+
+# ---------------------------------------------------------------------------
+# Resource ceilings — bound the open-ended diversity loop.
+# ---------------------------------------------------------------------------
+ceilings:
+  max_tables: 256              # total tables a single build may write
+  max_batch: 32                # tables per generate batch
+  max_runtime_seconds: 1800    # wall-clock cap for a full build
+
+# ---------------------------------------------------------------------------
+# Oracle — Layer 1 quality gates (hard, per-table, binary).
+# Enforced at the write.py boundary; calibrate against tests/fixtures.
+# ---------------------------------------------------------------------------
+gates:
+  aliasing:
+    max_harmonic: 1024                 # nyquist for 2048-sample cycle
+    out_of_band_db: -60.0              # max energy above max_harmonic
+  dc_offset_max: 1.0e-4                # |mean| tolerance
+  loop_continuity:
+    endpoint_discontinuity_max: 1.0e-3
+    derivative_discontinuity_max: 1.0e-2
+  loudness:
+    metric: rms                        # rms | peak
+    target: 0.5
+    tolerance_db: 1.5
+  format_conformance: strict           # sample/channel/bit-depth/frame count
+
+# ---------------------------------------------------------------------------
+# Oracle — Layer 2 diversity / coverage objective (library-level).
+# This is what prevents convergence on a single transformation.
+# ---------------------------------------------------------------------------
+diversity:
+  feature_space: perceptual            # perceptual (bark/mel) | flat
+  features:
+    - spectral_centroid
+    - spectral_spread
+    - spectral_flatness
+    - spectral_rolloff
+    - odd_even_ratio
+    - harmonic_decay_slope
+    - mfcc
+  min_mean_nn_distance: 0.0            # spread target — set during calibration
+  grid_bins: 8                         # per-feature quantization for coverage
+  min_grid_coverage: 0.0               # fraction of occupied grid cells — TBD
+  near_duplicate_epsilon: 0.05         # no two tables closer than this
+
+# ---------------------------------------------------------------------------
+# Generator families. Each entry will gain a `params` sweep block as the family
+# is implemented. >= 6 mechanically distinct families required for run 1.
+# ---------------------------------------------------------------------------
+generators:
+  additive: {}        # harmonic recipes
+  fm: {}              # FM / PM
+  phasedist: {}       # phase distortion
+  wavefold: {}        # wavefolding / nonlinear shapers
+  spectral: {}        # direct spectral sculpting (inverse FFT)
+  formant: {}         # formant / vocal
+  # chaotic: {}       # chaotic maps           (optional, beyond the floor of 6)
+  # physical: {}      # light physical models  (optional, beyond the floor of 6)

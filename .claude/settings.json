@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read(**)",
+      "Write(src/**)", "Write(tests/**)", "Write(out/**)",
+      "Write(presets.yaml)", "Write(Makefile)", "Write(verify.py)",
+      "Write(pyproject.toml)", "Write(requirements.txt)", "Write(.gitignore)",
+      "Write(README.md)", "Write(CLAUDE.md)", "Write(.mcp.json)",
+      "Write(.claude/hooks/**)",
+      "Edit(src/**)", "Edit(tests/**)", "Edit(presets.yaml)",
+      "Edit(verify.py)", "Edit(.claude/hooks/**)",
+      "Bash(python:*)", "Bash(python -m:*)", "Bash(py:*)",
+      "Bash(pytest:*)", "Bash(ruff:*)",
+      "Bash(make verify)", "Bash(make:*)",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git tag:*)",
+      "Bash(git status)", "Bash(git status:*)", "Bash(git log:*)",
+      "Bash(git diff:*)", "Bash(git show:*)",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(mkdir:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)", "Bash(git remote:*)",
+      "Bash(rm -rf:*)", "Bash(sudo:*)",
+      "Bash(curl:*)", "Bash(wget:*)", "Bash(ssh:*)", "Bash(scp:*)", "Bash(nc:*)",
+      "Bash(pip install:*)", "Bash(pip3 install:*)", "Bash(python -m pip install:*)",
+      "WebFetch", "WebSearch",
+      "Read(./.env)", "Read(~/.ssh/**)",
+      "Write(../**)", "Write(~/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "python .claude/hooks/fmt.py" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python .claude/hooks/gate.py" }
+        ]
+      }
+    ]
+  }
+}

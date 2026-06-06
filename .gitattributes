@@ -1,0 +1,7 @@
+# Normalize line endings. Text files stored as LF in the repo; checked out
+# native on Windows. Keeps diffs clean across the cross-platform harness.
+* text=auto eol=lf
+
+# Generated wavetables are binary.
+*.wav binary
+*.png binary

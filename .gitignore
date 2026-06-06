@@ -1,0 +1,25 @@
+# Virtual environment (pre-provisioned, not committed)
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Generated artifacts — the build writes wavetables, spectrograms, and the
+# catalog here. The directory is kept (.gitkeep) but its contents are not
+# committed; everything regenerates from seeds via `python verify.py`.
+out/*
+!out/.gitkeep
+
+# Harness scratch
+verify.log
+
+# OS
+.DS_Store
+Thumbs.db

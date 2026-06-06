@@ -1,0 +1,3 @@
+# Generated wavetables, spectrograms, and catalog.json land here.
+# The directory is tracked; its contents are git-ignored and regenerate from
+# seeds via `python verify.py`.
