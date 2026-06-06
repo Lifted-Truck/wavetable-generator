@@ -75,19 +75,19 @@ chaotic maps, light physical models. Ship at least six of these.
 
 ## Milestone checklist
 
-Run 1 (core + human interface):
-1. Scaffold, Makefile/`verify.py`, failing verify, venv. ← **done (this commit)**
-2. Synthesis primitives + `features.py`, unit-tested vs golden fixtures.
+Run 1 (core + human interface) — **complete; `python verify.py` green**:
+1. Scaffold, Makefile/`verify.py`, failing verify, venv. ← **done**
+2. Synthesis primitives + `features.py`, unit-tested vs golden fixtures. ← **done**
 3. `write.py` single write path + the oracle, tested vs known-bad fixtures
    (alias, DC offset, loop click, two near-duplicates) + "invalid cannot be
-   written" test. *Most important step.*
-4. `Generator` interface + registry with the first three distinct families.
-5. Remaining families to N=6, the coverage-driven diversity loop, full `build`.
+   written" test. *Most important step.* ← **done**
+4. `Generator` interface + registry with the first three distinct families. ← **done**
+5. Remaining families to N=6, the coverage-driven diversity loop, full `build`. ← **done**
 6. Spectrograms, `catalog.json` (params, seed, features, `morph_dims`),
-   reconciliation, `query_catalog` and `coverage` levers.
-7. `api.py` + `cli.py` with `--dry-run`; README; final green verify.
+   reconciliation, `query_catalog` and `coverage` levers. ← **done**
+7. `api.py` + `cli.py` with `--dry-run`; README; final green verify. ← **done**
 
-→ Audition checkpoint (listen in Serum).
+→ Audition checkpoint (listen in Serum). ← **next (manual)**
 
 Run 2 (Claude/MCP skin):
 8. `mcp_server.py` exposing the control surface.
