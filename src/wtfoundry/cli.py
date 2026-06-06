@@ -74,6 +74,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         elif args.command == "validate":
             result = foundry.validate(args.target)
+            if args.strict and not result.get("passed", False):
+                print(json.dumps(result, indent=2, default=str))
+                print("wtfoundry: validation failed (--strict)", file=sys.stderr)
+                return 1
         elif args.command == "coverage":
             result = foundry.coverage()
         elif args.command == "query":

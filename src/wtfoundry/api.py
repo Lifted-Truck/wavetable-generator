@@ -13,7 +13,14 @@ keeps `python verify.py` red until Run 1 fills them in.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import numpy as np
+
+from wtfoundry.core import export
+from wtfoundry.core.features import table_features
+from wtfoundry.core.validate import check_gates, diversity_report
 
 
 class Foundry:
@@ -41,9 +48,57 @@ class Foundry:
         raise NotImplementedError("Run 1, milestone 7: generate lever")
 
     def validate(self, target: str) -> dict[str, Any]:
-        """Run the oracle (Layer-1 gates and the Layer-2 diversity objective) on
-        an existing table path or scope and report the results."""
-        raise NotImplementedError("Run 1, milestone 3: oracle")
+        """Run the oracle on an existing table path or scope and report results.
+
+        ``target`` may be a single ``.wav`` table (Layer-1 gates only) or a
+        directory scope (Layer-1 gates per table plus the Layer-2 diversity
+        objective across them). Returns a JSON-friendly report with an overall
+        ``passed`` flag.
+        """
+        path = Path(target)
+        if path.is_dir():
+            wavs = sorted(path.glob("*.wav"))
+            tables = []
+            vectors = []
+            for wav in wavs:
+                frames = export.read_wavetable(wav)
+                gate = check_gates(frames)
+                tables.append(
+                    {
+                        "path": str(wav),
+                        "passed": gate.passed,
+                        "checks": gate.checks,
+                        "reasons": gate.reasons,
+                    }
+                )
+                vectors.append(table_features(frames))
+            div = diversity_report(np.array(vectors)) if vectors else None
+            gates_ok = all(t["passed"] for t in tables)
+            return {
+                "scope": str(path),
+                "n_tables": len(tables),
+                "tables": tables,
+                "diversity": None
+                if div is None
+                else {
+                    "passed": div.passed,
+                    "mean_nn_distance": div.mean_nn_distance,
+                    "grid_coverage": div.grid_coverage,
+                    "near_duplicate_pairs": div.near_duplicate_pairs,
+                    "reasons": div.reasons,
+                },
+                "passed": gates_ok and (div is None or div.passed),
+            }
+
+        frames = export.read_wavetable(path)
+        gate = check_gates(frames)
+        return {
+            "path": str(path),
+            "passed": gate.passed,
+            "checks": gate.checks,
+            "measures": gate.measures,
+            "reasons": gate.reasons,
+        }
 
     def query_catalog(
         self,

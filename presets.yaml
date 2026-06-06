@@ -34,12 +34,14 @@ gates:
     out_of_band_db: -60.0              # max energy above max_harmonic
   dc_offset_max: 1.0e-4                # |mean| tolerance
   loop_continuity:
-    endpoint_discontinuity_max: 1.0e-3
-    derivative_discontinuity_max: 1.0e-2
+    # Scale-invariant: the wrap-point value/slope jump relative to the largest
+    # interior step. A smooth periodic cycle sits near 1; a loop click blows up.
+    value_ratio_max: 3.0
+    slope_ratio_max: 8.0
   loudness:
-    metric: rms                        # rms | peak
-    target: 0.5
-    tolerance_db: 1.5
+    metric: peak                       # peak | rms — peak avoids clipping peaky waves
+    target: 0.9
+    tolerance_db: 1.0
   format_conformance: strict           # sample/channel/bit-depth/frame count
 
 # ---------------------------------------------------------------------------
