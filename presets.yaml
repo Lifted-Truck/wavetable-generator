@@ -58,21 +58,59 @@ diversity:
     - odd_even_ratio
     - harmonic_decay_slope
     - mfcc
-  min_mean_nn_distance: 0.0            # spread target — set during calibration
+  min_mean_nn_distance: 0.8            # spread target (calibrated: build achieves ~1.9)
   grid_bins: 8                         # per-feature quantization for coverage
-  min_grid_coverage: 0.0               # fraction of occupied grid cells — TBD
-  near_duplicate_epsilon: 0.05         # no two tables closer than this
+  min_grid_coverage: 0.08              # occupied cells of the 2-D PCA grid (build ~0.16)
+  near_duplicate_epsilon: 0.05         # no two tables closer than this (standardized)
 
 # ---------------------------------------------------------------------------
-# Generator families. Each entry will gain a `params` sweep block as the family
-# is implemented. >= 6 mechanically distinct families required for run 1.
+# Build loop — how the diverse library is assembled from the candidate pool.
+# ---------------------------------------------------------------------------
+build:
+  frames_per_table: 64       # frames per generated table (<= format.frames_per_table)
+  target_tables: 24          # size of the diverse library selected from the pool
+  seeds: [0, 1]              # seeds tried per variation (only varied for stochastic families)
+
+# ---------------------------------------------------------------------------
+# Generator families and their parameter sweeps (the candidate variations the
+# build draws from). >= 6 mechanically distinct families for run 1. Each
+# variation is a parameter dict; omitted params fall back to schema defaults.
 # ---------------------------------------------------------------------------
 generators:
-  additive: {}        # harmonic recipes
-  fm: {}              # FM / PM
-  phasedist: {}       # phase distortion
-  wavefold: {}        # wavefolding / nonlinear shapers
-  spectral: {}        # direct spectral sculpting (inverse FFT)
-  formant: {}         # formant / vocal
-  # chaotic: {}       # chaotic maps           (optional, beyond the floor of 6)
-  # physical: {}      # light physical models  (optional, beyond the floor of 6)
+  additive:           # harmonic recipes
+    variations:
+      - {tilt: 0.5, even_level: 1.0, bright: 0.95}
+      - {tilt: 1.0, even_level: 0.0, bright: 0.6}
+      - {tilt: 1.8, even_level: 0.6, bright: 0.4}
+      - {tilt: 2.6, even_level: 1.0, bright: 0.2}
+  fm:                 # FM / PM
+    variations:
+      - {ratio: 1, index_max: 3.0}
+      - {ratio: 2, index_max: 6.0}
+      - {ratio: 3, index_max: 8.0, feedback: 0.3}
+      - {ratio: 5, index_max: 10.0}
+      - {ratio: 7, index_max: 5.0, feedback: 0.6}
+  phasedist:          # phase distortion
+    variations:
+      - {amount_end: 0.7, skew: 0.0}
+      - {amount_end: 0.9, skew: 0.4}
+      - {amount_end: 0.95, skew: -0.4}
+  wavefold:           # wavefolding / nonlinear shapers
+    variations:
+      - {fold: 3.0, symmetry: 0.0}
+      - {fold: 6.0, symmetry: 0.3}
+      - {fold: 9.0, symmetry: 0.0}
+      - {fold: 7.0, symmetry: -0.5}
+  spectral:           # direct spectral sculpting (inverse FFT)
+    variations:
+      - {n_peaks: 2, width: 0.03, center_start: 0.05, center_end: 0.4, phase_rand: 0.8}
+      - {n_peaks: 4, width: 0.05, center_start: 0.1, center_end: 0.6, phase_rand: 1.0}
+      - {n_peaks: 1, width: 0.02, center_start: 0.1, center_end: 0.7, phase_rand: 0.3}
+  formant:            # formant / vocal
+    variations:
+      - {vowel_from: 0, vowel_to: 2}
+      - {vowel_from: 3, vowel_to: 4}
+      - {vowel_from: 1, vowel_to: 0}
+      - {vowel_from: 2, vowel_to: 3}
+  # chaotic:          # chaotic maps           (optional, beyond the floor of 6)
+  # physical:         # light physical models  (optional, beyond the floor of 6)

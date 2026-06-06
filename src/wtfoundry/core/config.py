@@ -36,11 +36,17 @@ DEFAULTS: dict[str, Any] = {
     },
     "diversity": {
         "feature_space": "perceptual",
-        "min_mean_nn_distance": 0.0,
+        "min_mean_nn_distance": 0.8,
         "grid_bins": 8,
-        "min_grid_coverage": 0.0,
+        "min_grid_coverage": 0.08,
         "near_duplicate_epsilon": 0.05,
     },
+    "build": {
+        "frames_per_table": 64,
+        "target_tables": 24,
+        "seeds": [0, 1],
+    },
+    "generators": {},
 }
 
 
@@ -83,3 +89,11 @@ def diversity(path: str | None = None) -> dict[str, Any]:
 
 def fmt(path: str | None = None) -> dict[str, Any]:
     return load_presets(path)["format"]
+
+
+def build_cfg(path: str | None = None) -> dict[str, Any]:
+    return load_presets(path)["build"]
+
+
+def generators_cfg(path: str | None = None) -> dict[str, Any]:
+    return load_presets(path)["generators"]

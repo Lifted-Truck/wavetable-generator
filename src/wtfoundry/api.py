@@ -13,14 +13,13 @@ keeps `python verify.py` red until Run 1 fills them in.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from wtfoundry.core import config, export
+from wtfoundry.core.build import Candidate, build_library, table_slug
 from wtfoundry.core.features import features_dict, table_features
 from wtfoundry.core.validate import check_gates, diversity_report
 from wtfoundry.core.write import write_table
@@ -29,12 +28,6 @@ from wtfoundry.generators import registry
 
 def _out_dir() -> Path:
     return config._project_root() / "out"
-
-
-def _slug(generator: str, params: dict[str, Any], seed: int | None, n_frames: int) -> str:
-    payload = json.dumps({"g": generator, "p": params, "s": seed, "n": n_frames}, sort_keys=True)
-    digest = hashlib.sha1(payload.encode()).hexdigest()[:10]
-    return f"{generator}__{digest}"
 
 
 class Foundry:
@@ -63,7 +56,7 @@ class Foundry:
         resolved = gen.resolve(params)
         morph = morph or {}
         n_frames = int(morph.get("n_frames", config.fmt()["frames_per_table"]))
-        slug = _slug(generator, resolved, seed, n_frames)
+        slug = table_slug(generator, resolved, seed, n_frames)
         path = _out_dir() / f"{slug}.wav"
 
         if dry_run:
@@ -90,6 +83,47 @@ class Foundry:
             "passed": result.gate.passed,
             "checks": result.gate.checks,
             "features": features_dict(frames),
+        }
+
+    def build(
+        self,
+        only: str | None = None,
+        *,
+        presets_path: str | None = None,
+        out_dir: str | None = None,
+        progress: Any = None,
+    ) -> dict[str, Any]:
+        """Assemble the diverse library: render the candidate pool from every
+        family's sweep, select a maximally-spread subset, and write each table
+        through the single validated write path. ``only`` restricts to one family
+        for fast iteration. Returns what was written and the diversity report."""
+        target_dir = Path(out_dir) if out_dir else _out_dir()
+
+        def writer(cand: Candidate, path: Path) -> dict[str, Any]:
+            result = write_table(
+                cand.frames, path, intended_max_harmonic=cand.intended_max_harmonic
+            )
+            return {
+                "generator": cand.generator,
+                "params": cand.params,
+                "seed": cand.seed,
+                "n_frames": cand.n_frames,
+                "path": str(result.path),
+                "passed": result.gate.passed,
+            }
+
+        result = build_library(
+            only=only,
+            presets_path=presets_path,
+            out_dir=target_dir,
+            progress=progress,
+            writer=writer,
+        )
+        return {
+            "n_written": len(result.written),
+            "pool_size": result.pool_size,
+            "written": result.written,
+            "diversity": result.diversity,
         }
 
     def validate(self, target: str) -> dict[str, Any]:

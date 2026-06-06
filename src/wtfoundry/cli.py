@@ -83,9 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "query":
             result = foundry.query_catalog(args.nearest_to, json.loads(args.filters))
         elif args.command == "build":
-            # build is a harness convenience that drives generate across the
-            # config; it lives in the api layer (Run 1, milestone 5).
-            raise NotImplementedError("Run 1, milestone 5: full build loop")
+            result = foundry.build(only=args.only, progress=lambda m: print(m, file=sys.stderr))
         elif args.command == "catalog":
             raise NotImplementedError("Run 1, milestone 6: catalog reconcile")
         else:  # pragma: no cover - argparse enforces choices

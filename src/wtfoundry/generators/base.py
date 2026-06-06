@@ -67,6 +67,9 @@ class Generator(ABC):
     name: str = ""
     description: str = ""
     params: tuple[ParamSpec, ...] = ()
+    # Stochastic families draw from self.rng, so different seeds yield different
+    # tables; the build varies the seed for these and not for deterministic ones.
+    stochastic: bool = False
 
     # ---- introspection -------------------------------------------------
     def schema(self) -> dict[str, Any]:

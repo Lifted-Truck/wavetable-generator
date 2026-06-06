@@ -13,6 +13,13 @@ from wtfoundry.generators.base import Generator, ParamSpec, register, registry
 
 # Importing each family module runs its @register decorator, populating the
 # registry that list_generators() reads. Add a family here to extend the tool.
-from wtfoundry.generators import additive, fm, wavefold  # noqa: E402,F401
+from wtfoundry.generators import (  # noqa: E402,F401
+    additive,
+    fm,
+    formant,
+    phasedist,
+    spectral,
+    wavefold,
+)
 
 __all__ = ["Generator", "ParamSpec", "register", "registry"]
