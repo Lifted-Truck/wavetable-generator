@@ -5,6 +5,63 @@ This file is always in context. It carries the invariants that must hold every
 turn. The full rationale lives in `wavetable-foundry-spec.md`; this is the
 operational summary.
 
+## Status & handoff (2026-06-07)
+
+**Run 1 is complete; `python verify.py` is green** (pytest → build →
+validate --strict → catalog --reconcile). Pushed to
+`github.com/Lifted-Truck/wavetable-generator` @ commit `be204f7` (branch
+`main`, tags `milestone-1`…`milestone-7`). The library is 23 tables across the
+six families in `out/` with a reconciling `catalog.json` + spectrograms.
+
+**Next phase: diversity tuning from the audition, BEFORE Run 2 (MCP skin).**
+The audition surfaced that the diversity metric is passing some perceptually
+weak or bass-biased tables. Improve the generators + feature weighting, rebuild,
+re-audition, then build Run 2.
+
+### Resume on a new machine
+The venv is gitignored — recreate it. No `make` on the original host (use
+`python verify.py`); PowerShell has no `&&` (run commands on separate lines);
+ad-hoc commands need the venv interpreter (`.venv\Scripts\python.exe ...`).
+
+```
+git clone https://github.com/Lifted-Truck/wavetable-generator
+cd wavetable-generator
+python -m venv .venv
+.venv\Scripts\activate                # Windows; or: source .venv/bin/activate
+pip install -e ".[dev]"
+python verify.py                       # must be green
+python -m wtfoundry.cli build          # writes out/ (wav + png + catalog.json)
+python tools/audition/server.py        # re-audition in the browser
+```
+
+### Audition findings → todo (priority order)
+1. **spectral** — most *distinct* but partly BROKEN: no tonic (fundamental
+   missing) and ~half the frames are silent (bumps land out of band / negligible
+   energy). It scores "diverse" partly *because* it is thin. Keep harmonic 1
+   present; guarantee every frame has audible in-band energy.
+2. **formant** — least differentiated; doesn't read as vocal. Use real formant
+   frequencies relative to a chosen f0, stronger resonance Q, a brighter source
+   so vowels are recognizable.
+3. **additive** — sweeps unmusical: `tilt=2.6` nearly static; `tilt=0.5` "blown
+   out" by mid-morph; `tilt=1.0` jarring ~1/3 in. Gentler brightness curves, cap
+   the blowout, make the dark ones actually move.
+4. **phasedist** — bland, undifferentiated. Add resonant-PD variety / distinct
+   shapes, or cut variations.
+5. **fm** — best family by ear, but all sit in the bass. Add brighter /
+   higher-register variations so it spans more than low growl.
+6. **wavefold** — good (resonant growl); the `fold=3` variant is least colorful.
+7. **Cross-cutting:** library is bass-biased and the feature space rewards
+   numerical (MFCC) spread over *heard* brightness — nominal-Hz centroids are
+   tiny for most tables. Reweight features so perceived brightness / loudness /
+   "does it move across the morph" count more, then recalibrate the diversity
+   thresholds (`presets.yaml`). Generator sweeps also live in `presets.yaml`.
+
+### Known tool issue
+`tools/audition/` clicks when scrubbing morph: `setPeriodicWave` swaps the live
+oscillator's wave mid-cycle. The tables are loop-continuous (gate-enforced), so
+this is a tool artifact, not bad data. Fix by crossfading two oscillators across
+the morph step. Low priority.
+
 ## The one rule
 
 **`make verify` is the only definition of done.** On this machine `make` is not
